@@ -112,12 +112,17 @@ class DataStream:
             for processor in self._processors:
                 if processor.validate(element):
                     processor.ingest(element)
-                    increment = len(element) if isinstance(element, list) else 1
+                    increment = (
+                        len(element) if isinstance(element, list) else 1
+                    )
                     self._stats[processor] += increment
                     handled = True
                     break
             if not handled:
-                print(f"DataStream error - Can't process element in stream: {element}")
+                print(
+                    f"DataStream error - Can't process "
+                    f"element in stream: {element}"
+                    )
 
     def print_processors_stats(self) -> None:
         print("== DataStream statistics ==")
@@ -128,7 +133,10 @@ class DataStream:
             name = proc.__class__.__name__.replace("Processor", " Processor")
             total = self._stats[proc]
             remaining = proc.remaining_count
-            print(f"{name}: total {total} items processed, remaining {remaining} on processor")
+            print(
+                f"{name}: total {total} items processed, "
+                f"remaining {remaining} on processor"
+                )
 
 
 if __name__ == "__main__":
@@ -144,7 +152,10 @@ if __name__ == "__main__":
     batch = [
         "Hello world",
         [3.14, -1, 2.71],
-        [{"log_level": "WARNING", "log_message": "Telnet access! Use ssh instead"},
+        [{
+            "log_level": "WARNING",
+            "log_message": "Telnet access! Use ssh instead"
+            },
          {"log_level": "INFO",    "log_message": "User wil is connected"}],
         42,
         ["Hi", "five"],
@@ -162,7 +173,10 @@ if __name__ == "__main__":
     print("Send the same batch again")
     ds.process_stream(batch)
     ds.print_processors_stats()
-    print("\nConsume some elements from the data processors: Numeric 3, Text 2, Log 1")
+    print(
+        "\nConsume some elements from the data processors: "
+        "Numeric 3, Text 2, Log 1"
+        )
     for _ in range(3):
         np.output()
     for _ in range(2):
@@ -170,5 +184,3 @@ if __name__ == "__main__":
     for _ in range(1):
         lp.output()
     ds.print_processors_stats()
-
-

@@ -30,7 +30,7 @@ class DataProcessor(ABC):
     def remaining(self) -> int:
         return len(self._storage)
 
-    def _record(self, count: int = 1) -> None:
+    def record(self, count: int = 1) -> None:
         self._total += count
 
     def name(self) -> str:
@@ -56,10 +56,10 @@ class NumericProcessor(DataProcessor):
         if isinstance(data, list):
             for item in data:
                 self._storage.append(str(item))
-                self._record(len(data))
+                self.record(len(data))
         else:
             self._storage.append(str(data))
-            self._record(1)
+            self.record(1)
 
 
 class TextProcessor(DataProcessor):
@@ -76,10 +76,10 @@ class TextProcessor(DataProcessor):
         if isinstance(data, list):
             for item in data:
                 self._storage.append(item)
-                self._record(len(data))
+                self.record(len(data))
         else:
             self._storage.append(data)
-            self._record(1)
+            self.record(1)
 
 
 class LogProcessor(DataProcessor):
@@ -107,19 +107,8 @@ class LogProcessor(DataProcessor):
             level = entry.get("log_level", "")
             msg = entry.get("log_message", "")
             self._storage.append(f"{level}: {msg}")
-        self._record(len(entries))
+        self.record(len(entries))
 
-
-    def print_processors_stats(self) -> None:
-        print("== DataStream statistics ==")
-        if not self._processors:
-            print("No processor found, no data")
-            return
-        for processor in self._processors:
-            print(
-                f"{proc.name()}: total {proc.total_processed()} items processed, "
-                f"remaining {proc.remaining()} on processor"
-            )
 
 class ExportPlugin(Protocol):
     def process_output(self, data: list[tuple[int, str]]) -> None:
@@ -150,9 +139,9 @@ class DataStream:
         self._stats: dict[DataProcessor, int] = {}
 
     def register_processor(self, proc: DataProcessor) -> None:
-            if proc not in self._processors:
-                self._processors.append(proc)
-                self._stats[proc] = 0
+        if proc not in self._processors:
+            self._processors.append(proc)
+            self._stats[proc] = 0
 
     def process_stream(self, stream: list[Any]) -> None:
         for element in stream:
@@ -160,12 +149,17 @@ class DataStream:
             for processor in self._processors:
                 if processor.validate(element):
                     processor.ingest(element)
-                    increment = len(element) if isinstance(element, list) else 1
+                    increment = (
+                        len(element) if isinstance(element, list) else 1
+                    )
                     self._stats[processor] += increment
                     handled = True
                     break
             if not handled:
-                print(f"DataStream error - Can't process element in stream: {element}")
+                print(
+                    f"DataStream error - Can't process "
+                    f"element in stream: {element}"
+                    )
 
     def output_pipeline(self, nb: int, plugin: ExportPlugin) -> None:
         for processor in self._processors:
@@ -178,25 +172,28 @@ class DataStream:
                 plugin.process_output(batch)
 
     def print_processors_stats(self) -> None:
-        print("== DataStream statistics ==")
+        print("\n== DataStream statistics ==")
         if not self._processors:
             print("No processor found, no data")
             return
         for proc in self._processors:
             name = proc.__class__.__name__.replace("Processor", " Processor")
             total = self._stats[proc]
-            remaining = proc.remaining
-            print(f"{name}: total {total} items processed, remaining {remaining} on processor")
+            remaining = proc.remaining()
+            print(
+                f"{name}: total {total} items processed, "
+                f"remaining {remaining} on processor"
+                )
 
 
 if __name__ == "__main__":
     print("=== Code Nexus - Data Pipeline ===")
-    print("Initialize Data Stream...")
+    print("\nInitialize Data Stream...")
 
     ds = DataStream()
     ds.print_processors_stats()
 
-    print("Registering Processors")
+    print("\nRegistering Processors")
     ds.register_processor(NumericProcessor())
     ds.register_processor(TextProcessor())
     ds.register_processor(LogProcessor())
@@ -204,16 +201,19 @@ if __name__ == "__main__":
     batch1 = [
         "Hello world",
         [3.14, -1, 2.71],
-        [{"log_level": "WARNING", "log_message": "Telnet access! Use ssh instead"},
+        [{
+            "log_level": "WARNING",
+            "log_message": "Telnet access! Use ssh instead"
+            },
          {"log_level": "INFO",    "log_message": "User wil is connected"}],
         42,
         ["Hi", "five"],
     ]
-    print(f"Send first batch of data on stream: {batch1}")
+    print(f"\nSend first batch of data on stream: {batch1}")
     ds.process_stream(batch1)
     ds.print_processors_stats()
 
-    print("Send 3 processed data from each processor to a CSV plugin:")
+    print("\nSend 3 processed data from each processor to a CSV plugin:")
     ds.output_pipeline(3, CsvExportPlugin())
     ds.print_processors_stats()
 
@@ -221,14 +221,17 @@ if __name__ == "__main__":
         21,
         ["I love AI", "LLMs are wonderful", "Stay healthy"],
         [{"log_level": "ERROR",  "log_message": "500 server crash"},
-         {"log_level": "NOTICE", "log_message": "Certificate expires in 10 days"}],
+         {
+            "log_level": "NOTICE",
+            "log_message": "Certificate expires in 10 days"
+            }],
         [32, 42, 64, 84, 128, 168],
         "World hello",
     ]
-    print(f"Send another batch of data: {batch2}")
+    print(f"\nSend another batch of data: {batch2}")
     ds.process_stream(batch2)
     ds.print_processors_stats()
 
-    print("Send 5 processed data from each processor to a JSON plugin:")
+    print("\nSend 5 processed data from each processor to a JSON plugin:")
     ds.output_pipeline(5, JsonExportPlugin())
     ds.print_processors_stats()
